@@ -24,14 +24,14 @@ var AuthenticationEndpoint *nex.PRUDPEndPoint
 func StartAuthenticationServer() {
 	AuthenticationServer = nex.NewPRUDPServer()
 
-	// Wii U / NEX 3.x PRUDPv1: the console signs its CONNECT with an empty
-	// connection signature and expects the CONNECT-ACK signed the same way.
-	// nex-go's default (false) mixes the client's connection signature into
-	// the CONNECT-ACK HMAC, which a real console rejects - it then retransmits
-	// CONNECT forever and finally reports 106-0502
-	// (Transport::ConnectionFailure). Required for every Wii U title on this
-	// nex-go; confirmed from a Trine 2 packet capture.
-	AuthenticationServer.PRUDPV1Settings.LegacyConnectionSignature = true
+	// PRUDPv1 CONNECT-ACK signature scheme. The 3.4.x Wii U titles (Trine 2,
+	// the Mario & Sonic servers) need LegacyConnectionSignature = true: their
+	// console signs CONNECT with an empty connection signature and rejects a
+	// CONNECT-ACK signed any other way (106-0502, endless CONNECT retransmit).
+	// Hyrule Warriors is NEX 3.8.13 and a real console capture shows it
+	// rejecting the legacy-signed CONNECT-ACK the same way - it wants the
+	// modern scheme (nex-go's default), so leave this false.
+	AuthenticationServer.PRUDPV1Settings.LegacyConnectionSignature = false
 
 	AuthenticationEndpoint = nex.NewPRUDPEndPoint(1)
 	AuthenticationEndpoint.ServerAccount = globals.AuthenticationServerAccount
