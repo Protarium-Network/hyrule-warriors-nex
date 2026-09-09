@@ -24,6 +24,15 @@ var AuthenticationEndpoint *nex.PRUDPEndPoint
 func StartAuthenticationServer() {
 	AuthenticationServer = nex.NewPRUDPServer()
 
+	// Wii U / NEX 3.x PRUDPv1: the console signs its CONNECT with an empty
+	// connection signature and expects the CONNECT-ACK signed the same way.
+	// nex-go's default (false) mixes the client's connection signature into
+	// the CONNECT-ACK HMAC, which a real console rejects - it then retransmits
+	// CONNECT forever and finally reports 106-0502
+	// (Transport::ConnectionFailure). Required for every Wii U title on this
+	// nex-go; confirmed from a Trine 2 packet capture.
+	AuthenticationServer.PRUDPV1Settings.LegacyConnectionSignature = true
+
 	AuthenticationEndpoint = nex.NewPRUDPEndPoint(1)
 	AuthenticationEndpoint.ServerAccount = globals.AuthenticationServerAccount
 	AuthenticationEndpoint.AccountDetailsByPID = globals.AccountDetailsByPID

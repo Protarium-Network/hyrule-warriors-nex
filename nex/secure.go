@@ -37,6 +37,11 @@ var SecureEndpoint *nex.PRUDPEndPoint
 func StartSecureServer() {
 	SecureServer = nex.NewPRUDPServer()
 
+	// See authentication.go: Wii U / NEX 3.x needs the legacy (empty)
+	// connection-signature scheme for the PRUDPv1 CONNECT handshake, or a
+	// real console fails with 106-0502.
+	SecureServer.PRUDPV1Settings.LegacyConnectionSignature = true
+
 	SecureEndpoint = nex.NewPRUDPEndPoint(1)
 	SecureEndpoint.IsSecureEndPoint = true
 	SecureEndpoint.ServerAccount = globals.SecureServerAccount

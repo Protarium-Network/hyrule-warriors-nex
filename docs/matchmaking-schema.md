@@ -1,13 +1,17 @@
 # The matchmaking / tracking schema
 
-`nex-protocols-common-go` (and the vendored fork in `internal/`) contains all
-the SQL for online matchmaking, but it **expects the `matchmaking` and
-`tracking` schemas to already exist** - it never runs `CREATE TABLE`. Pretendo
-applies that schema out of band.
+> **This server does not create this schema.** `nex-protocols-common-go`
+> v2.4.0 self-creates the full `matchmaking.*` / `tracking.*` schema inside
+> `CommonProtocol.SetManager` (called from `nex/secure.go`).
+> `database/init_postgres.go` deliberately leaves it alone — hand-authoring it
+> first only risks a column-shape mismatch that silently no-ops the library's
+> own `CREATE TABLE IF NOT EXISTS`. The tables below are kept as a **reference
+> map** of what the library builds and what the queries expect.
 
-So `database/init_postgres.go` creates it here. Every column type was read
-back from what the library's queries `Scan` into; this is a
-reconstruction, not an official schema.
+Older notes, for reference: the library ships all the matchmaking SQL but its
+queries assume the schema already exists. The column types below were read
+back from what those queries `Scan` into; this is a reconstruction, not an
+official schema.
 
 ## `matchmaking` schema
 
