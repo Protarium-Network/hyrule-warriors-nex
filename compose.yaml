@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: hyrulewarriors
       POSTGRES_USER: hyrulewarriors
@@ -15,20 +16,33 @@ services:
 
   nex:
     build: .
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      PN_HYRULEWARRIORS_AUTH_PORT: "26000"
-      PN_HYRULEWARRIORS_SECURE_PORT: "26001"
+      PN_HYRULEWARRIORS_AUTH_PORT: "27200"
+      PN_HYRULEWARRIORS_SECURE_PORT: "27201"
+      # The address a console is told to reach the secure server on. Override
+      # in .env or the shell; defaults to localhost for a LAN test.
       PN_HYRULEWARRIORS_SECURE_HOST: ${PN_HYRULEWARRIORS_SECURE_HOST:-localhost}
       PN_HYRULEWARRIORS_POSTGRES_URI: postgres://hyrulewarriors:hyrulewarriors@postgres:5432/hyrulewarriors?sslmode=disable
       PN_HYRULEWARRIORS_KERBEROS_PASSWORD: ${PN_HYRULEWARRIORS_KERBEROS_PASSWORD:-change-me}
-      PN_HYRULEWARRIORS_LOCAL_MODE: "1"
+      # Local preservation mode: accounts from settings.json, login token not
+      # validated. Flip to shared mode by setting PN_HYRULEWARRIORS_LOCAL_MODE=0
+      # and providing the two NEX_* secrets (matching your account server).
+      PN_HYRULEWARRIORS_LOCAL_MODE: ${PN_HYRULEWARRIORS_LOCAL_MODE:-1}
       PN_HYRULEWARRIORS_SETTINGS_PATH: /home/go/app/settings.json
+      PN_HYRULEWARRIORS_NEX_TOKEN_AES_KEY: ${PN_HYRULEWARRIORS_NEX_TOKEN_AES_KEY:-}
+      PN_HYRULEWARRIORS_NEX_PASSWORD_SECRET: ${PN_HYRULEWARRIORS_NEX_PASSWORD_SECRET:-}
+      # Optional S3 for DataStore object uploads (downloads work without it).
+      PN_S3_ENDPOINT: ${PN_S3_ENDPOINT:-}
+      PN_S3_ACCESS_KEY: ${PN_S3_ACCESS_KEY:-}
+      PN_S3_SECRET_KEY: ${PN_S3_SECRET_KEY:-}
+      PN_S3_BUCKET: ${PN_S3_BUCKET:-hyrulewarriors-datastore}
     ports:
-      - "26000:26000/udp"
-      - "26001:26001/udp"
+      - "27200:27200/udp"
+      - "27201:27201/udp"
     volumes:
       - ./settings.json:/home/go/app/settings.json:ro
 
