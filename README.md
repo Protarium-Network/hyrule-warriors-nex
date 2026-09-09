@@ -22,10 +22,11 @@ The evidence trail for every constant and design choice is in
 | Field | Value | Source |
 |---|---|---|
 | Game server ID | `1017cd00` (269995264) | kinnay [`nexwiiu.json`](https://kinnay.github.io/data/nexwiiu.json) `id`, as `%08x` |
-| Access key | `7fcc1f7c` | kinnay `key` |
-| NEX version | `3.8.13` | kinnay `build:3_8_13_2004_0` |
+| Access key | `7fcc1f7c` | kinnay `key` — **confirmed on hardware** (PRUDP handshake completes) |
+| NEX version | `3.8.13` | kinnay `build:3_8_13_2004_0`; console reports server version `0x7d2` (2002) |
 | NGS branch | `origin/release/ngs/3.8.x.200x` | kinnay |
-| Structure headers | on (`UseStructureHeader = true`) | NEX 3.8.x-era default — **unverified, no capture exists** |
+| Structure headers | on (`UseStructureHeader = true`) | **confirmed on hardware** — `LoginEx` `AuthenticationInfo` decodes cleanly |
+| PRUDPv1 CONNECT-ACK | modern scheme (`LegacyConnectionSignature = false`) | **confirmed on hardware** — the 3.4.x titles need the legacy empty-signature scheme; a real Hyrule Warriors console rejects that and needs the modern one |
 
 The retail RPX (`ProjectZ_r.rpx`) statically links NEX (no `nn_nex` RPL
 import) and drives it through `nn::act::AcquireNexServiceToken` with the game
@@ -56,11 +57,11 @@ No S3 bucket is required unless players upload objects (`PreparePostObject`).
 ```
         console                       this server
            │
-           │  ── LoginEx ─────────────▶  authentication server  :26000
+           │  ── LoginEx ─────────────▶  authentication server  :27200
            │  ◀─ Kerberos ticket +
            │     secure server address
            │
-           │  ── ticket, RegisterEx ──▶  secure server          :26001
+           │  ── ticket, RegisterEx ──▶  secure server          :27201
            │  ── GetRankings / UploadScore ▶   leaderboards  → PostgreSQL
            │  ── PreparePostObject ────▶   object upload → S3 presigned PUT
            │  ── CompletePostObject ───▶   metadata          → PostgreSQL
@@ -68,11 +69,12 @@ No S3 bucket is required unless players upload objects (`PreparePostObject`).
 
 ## Database
 
-One PostgreSQL database holds the `hyrulewarriors_*` ranking tables, the
-`datastore` schema, and the `matchmaking` / `tracking` schemas. It is created
-on first start. The `matchmaking` / `tracking` schema is **hand-authored** —
-the NEX common library ships the queries but not the DDL. See
-[docs/matchmaking-schema.md](docs/matchmaking-schema.md).
+One PostgreSQL database. `database/init_postgres.go` creates the
+`hyrulewarriors_*` ranking tables and the `datastore` schema; the
+`matchmaking` / `tracking` schema is created by `nex-protocols-common-go`
+itself (in `CommonProtocol.SetManager`). See
+[docs/matchmaking-schema.md](docs/matchmaking-schema.md) for the reference
+layout.
 
 ## Running
 
@@ -101,7 +103,7 @@ player's NEX password is derived as `HMAC-SHA256(secret, pid)`.
 ### Without Docker
 
 ```bash
-export PN_HYRULEWARRIORS_AUTH_PORT=26000 PN_HYRULEWARRIORS_SECURE_PORT=26001
+export PN_HYRULEWARRIORS_AUTH_PORT=27200 PN_HYRULEWARRIORS_SECURE_PORT=27201
 export PN_HYRULEWARRIORS_SECURE_HOST=<LAN-IP-of-this-machine>
 export PN_HYRULEWARRIORS_POSTGRES_URI='postgres://hyrulewarriors:hyrulewarriors@localhost:5432/hyrulewarriors?sslmode=disable'
 export PN_HYRULEWARRIORS_LOCAL_MODE=1
@@ -119,18 +121,25 @@ isolated setup, a DNS + account-server redirect for the title.
 `PN_HYRULEWARRIORS_SECURE_HOST` **must be short** (~15 chars) — the retail
 binary truncates it into a fixed-size buffer.
 
-## What is unverified
+## Hardware status
 
-No Hyrule Warriors packet capture is known to exist. Two settings are the
-first knobs to touch if login or leaderboard decode fails:
+Verified on a real Wii U (2026-09-09): `AcquireNexServiceToken` → `LoginEx` →
+`RequestTicket` → secure `Register` → `DataStore::GetMetasMultipleParam` all
+succeed and the game's Network Features menu opens without an error code. No
+packet capture of the retail servers exists; the wire settings above were
+found by iterating against the console.
 
-1. **`UseStructureHeader`** — set `true` on both endpoints as the NEX 3.8.x
-   default. If `LoginEx` fails with "Structure content length longer than
-   data size", flip both to `false`. The auth endpoint dumps raw `LoginEx`
-   parameter bytes to stdout to make that call.
-2. **Ranking / DataStore field layouts** — the `hyrulewarriors_*` queries
-   are a generic Postgres leaderboard/object store, not tuned to a captured
-   response. `PROTOCOL_COVERAGE.md` lists what to check first.
+Still unverified — needs real network content and/or a second console:
+
+1. **Ranking field layouts** — the `hyrulewarriors_*` queries are a generic
+   Postgres leaderboard store, not tuned to a captured response. Untested
+   until the game actually submits/reads a leaderboard.
+2. **DataStore `GetMeta` / object payloads** — `GetMetasMultipleParam`
+   returns cleanly for absent objects (empty network), but the
+   `DataStoreMetaInfo` encoding for a *populated* Network Link / My Fairy
+   object is untested. `PROTOCOL_COVERAGE.md` has the details.
+3. **Object upload** — needs `PN_S3_ENDPOINT` (see below); not yet wired on
+   the reference deployment.
 
 ## License
 

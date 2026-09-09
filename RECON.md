@@ -85,15 +85,28 @@ is past the versions that fixed them:
 
 So `LibraryVersions` is left at the single `SetDefault(3, 8, 13)`.
 
-### Structure headers — unverified
+### Structure headers — confirmed on hardware
 
 Rio 2016 (3.4.7) writes structure-header version bytes before structured RMC
 parameters; Sochi 2014 (also 3.4.7) does not — it is title-specific at 3.4.x.
 By the 3.5+ era, structure headers on is the norm, so both endpoints set
-`ByteStreamSettings.UseStructureHeader = true`. If a real `LoginEx` ever
-decodes wrong ("Structure content length longer than data size"), flip both
-to `false`. `nex/authentication.go` dumps the raw `LoginEx` parameter bytes
-to stdout for exactly this check.
+`ByteStreamSettings.UseStructureHeader = true`. A real console `LoginEx`
+(2026-09-09) decoded cleanly with this on — `AuthenticationInfo{Token,
+NGSVersion:3, TokenType:1, ServerVersion:0x7d2}` parsed with no
+"Structure content length" error. `nex/authentication.go` keeps the raw
+`LoginEx` byte dump for future diffing.
+
+### PRUDPv1 CONNECT-ACK signature — confirmed on hardware
+
+The 3.4.x Wii U titles (Trine 2, the Mario & Sonic servers) need
+`PRUDPV1Settings.LegacyConnectionSignature = true`: their console signs
+CONNECT with an empty connection signature and rejects a CONNECT-ACK signed
+any other way. A real Hyrule Warriors console (NEX 3.8.13, 2026-09-09) does
+the **opposite** — with `LegacyConnectionSignature = true` it rejected every
+CONNECT-ACK and retransmitted CONNECT every ~2 s until `106-0502`
+(`Transport::ConnectionFailure`). Both endpoints are set to `false` (nex-go's
+default, the modern scheme); the handshake then completes and the console
+proceeds to `Register` and DataStore.
 
 ## Ranking surface
 
