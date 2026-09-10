@@ -12,9 +12,9 @@ nex-protocols-common-go with local DataStore changes (an S3 presigner and
 adjusted DataStore method behaviour). It keeps its own upstream AGPL-3.0
 LICENSE.
 
-The matchmaking.* / tracking.* PostgreSQL schema in database/init_postgres.go
-is hand-authored from that library's SQL (the library expects the schema to
-exist and never creates it) - see docs/matchmaking-schema.md.
+The matchmaking.* / tracking.* PostgreSQL schema is created by
+nex-protocols-common-go itself (CommonProtocol.SetManager);
+docs/matchmaking-schema.md keeps a reference map of that layout.
 
 The Hyrule Warriors NEX configuration (game server ID 1017cd00 / 269995264,
 access key 7fcc1f7c, NEX 3.8.13) comes from the public kinnay.github.io Wii U
